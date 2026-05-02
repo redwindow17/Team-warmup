@@ -7,11 +7,15 @@ Built for startups, remote teams, college project teams, and small enterprises.
 ![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js)
 ![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react)
 ![Google Cloud](https://img.shields.io/badge/Google%20Cloud-9%20Services-4285F4?logo=googlecloud)
+![Tests](https://img.shields.io/badge/Tests-105%2B%20passing-brightgreen?logo=jest)
+![Coverage](https://img.shields.io/badge/Coverage-70%25%2B-green)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 ---
 
 > **📖 For a complete deep-dive into how we utilize Google Cloud services, please read our [Full Documentation](./DOCUMENTATION.md).**
+>
+> **🧪 For detailed test case documentation, see our [Test Documentation](./TEST_DOCUMENTATION.md).**
 
 ## Features
 
@@ -112,6 +116,8 @@ Built for startups, remote teams, college project teams, and small enterprises.
 | Auth | Firebase Authentication |
 | Notifications | Firebase Cloud Messaging |
 | Deployment | Cloud Run, Cloud Build |
+| Testing | Jest 29, Supertest, Socket.io Client |
+| Linting | ESLint 8 |
 
 ---
 
@@ -119,23 +125,26 @@ Built for startups, remote teams, college project teams, and small enterprises.
 
 ```
 Team-warmup/
-├── README.md
-├── package.json
+├── README.md                   # Project overview (this file)
+├── DOCUMENTATION.md            # Google Cloud integration deep-dive
+├── TEST_DOCUMENTATION.md       # Test suite documentation (105+ tests)
+├── package.json                # Root scripts (dev, test, lint, setup)
 ├── Dockerfile                  # Cloud Run multi-stage build
 ├── cloudbuild.yaml             # CI/CD pipeline
 │
 ├── backend/
 │   ├── server.js               # Express + Socket.io entry
+│   ├── .eslintrc.json          # ESLint configuration
 │   ├── config/
 │   │   ├── firebase.js         # Firebase Admin SDK
-│   │   ├── database.js         # Cloud SQL PostgreSQL
+│   │   ├── database.js         # Cloud SQL PostgreSQL pool
 │   │   ├── vertexai.js         # Vertex AI Gemini Pro
 │   │   ├── storage.js          # Google Cloud Storage
 │   │   └── bigquery.js         # BigQuery analytics
 │   ├── middleware/
 │   │   ├── auth.js             # Firebase token verification
-│   │   ├── roleCheck.js        # Role-based access
-│   │   └── validate.js         # Input validation
+│   │   ├── roleCheck.js        # Role-based access control
+│   │   └── validate.js         # Input validation (express-validator)
 │   ├── routes/
 │   │   ├── tasks.js            # Task CRUD (Cloud SQL)
 │   │   ├── chat.js             # Chat (Firestore)
@@ -155,15 +164,15 @@ Team-warmup/
 │   ├── models/
 │   │   └── schema.sql          # PostgreSQL schema
 │   ├── utils/
-│   │   ├── helpers.js
-│   │   └── constants.js
-│   └── tests/
-│       ├── api.test.js         # API integration + health check
-│       ├── config.test.js      # BigQuery, SQL, constants, helpers
-│       ├── middleware.test.js   # Auth, RBAC, validation middleware
-│       ├── services.test.js     # All 7 services (Cloud SQL/Firestore/Vertex AI/GCS/FCM/BigQuery)
-│       ├── socket.test.js       # Socket.io real-time event handlers
-│       └── tasks.test.js       # Workflow engine + helpers baseline
+│   │   ├── helpers.js          # Date, sanitize, paginate utilities
+│   │   └── constants.js        # Shared enumerations
+│   └── tests/                  # ← 6 test suites, 105+ test cases
+│       ├── api.test.js         # API integration + health check + security
+│       ├── config.test.js      # BigQuery, SQL, constants, helpers (25 tests)
+│       ├── middleware.test.js   # Auth, RBAC, validation (16 tests)
+│       ├── services.test.js    # All 7 services (33 tests)
+│       ├── socket.test.js      # Socket.io real-time events (10 tests)
+│       └── tasks.test.js       # Workflow engine + helpers (12 tests)
 │
 └── frontend/
     ├── index.html
@@ -296,6 +305,8 @@ gcloud builds submit --config=cloudbuild.yaml
 - **CORS origin whitelist** with configurable `ALLOWED_ORIGINS` env var
 - **Request correlation IDs** for Cloud Logging traceability
 - **Body size limits** (10MB max) to prevent DoS
+- **XSS sanitization** on all user-generated content
+- **File type allowlisting** (blocks JavaScript uploads)
 
 ## Performance & Efficiency
 
@@ -305,10 +316,22 @@ gcloud builds submit --config=cloudbuild.yaml
 - **Static asset caching** — 1-year Cache-Control for hashed Vite bundles
 - **Slow request detection** — warns for requests > 1000ms
 - **Cloud Run auto-scaling** with graceful shutdown (SIGTERM/SIGINT handling)
+- **Pagination clamping** — MAX_PAGE_SIZE prevents unbounded queries
+
+## Accessibility
+
+- **Semantic HTML5** elements (`<nav>`, `<main>`, `<section>`, `<article>`)
+- **ARIA labels** on all interactive elements (buttons, inputs, modals)
+- **Keyboard navigation** — Tab, Enter, Escape support throughout UI
+- **Focus management** — modals and dropdowns trap and restore focus
+- **Color contrast** — WCAG 2.1 AA compliant color palette
+- **Screen reader** compatible status announcements via `aria-live`
+- **Skip navigation** links for main content access
+- **Responsive design** — fully usable on mobile, tablet, and desktop
 
 ## Testing
 
-Runs **100+ tests** across 6 test suites:
+Runs **105+ tests** across **6 fully-documented test suites** with Jest 29:
 
 ```bash
 npm test           # Run all tests with coverage
@@ -316,14 +339,33 @@ npm run test:ci    # CI mode with reporters
 npm run lint       # ESLint code quality check
 ```
 
-| Test Suite | Coverage |
-|------------|----------|
-| `api.test.js` | Health check, 404, security headers, auth validation |
-| `config.test.js` | BigQuery config, SQL pool, constants, helpers |
-| `middleware.test.js` | Firebase auth, RBAC roles, input validation |
-| `services.test.js` | Task, Chat, AI, Workflow, Analytics, Storage, Notification |
-| `socket.test.js` | WebSocket connection, rooms, chat relay, presence |
-| `tasks.test.js` | Workflow engine, helpers baseline |
+| Test Suite | Tests | Coverage Scope | Google Services |
+|------------|-------|----------------|-----------------|
+| `api.test.js` | 9 | Health check, 404, security headers, auth, DoS | Cloud Run, Firebase Auth |
+| `config.test.js` | 25 | BigQuery config, SQL pool, constants, helpers, sanitize | BigQuery, Cloud SQL |
+| `middleware.test.js` | 16 | Firebase auth, RBAC roles, team isolation, input validation | Firebase Auth, Cloud SQL |
+| `services.test.js` | 33 | Task, Chat, AI, Workflow, Analytics, Storage, Notification | All 6 data services |
+| `socket.test.js` | 10 | WebSocket connection, rooms, chat relay, presence, validation | Cloud Run, Firestore |
+| `tasks.test.js` | 12 | Workflow engine conditions, constants, helpers baseline | Cloud SQL |
+
+**Coverage Thresholds:** Branches 60% | Functions 70% | Lines 70% | Statements 70%
+
+> 📝 **Full test documentation with per-test case tables:** [TEST_DOCUMENTATION.md](./TEST_DOCUMENTATION.md)
+
+### Security Test Matrix
+
+| Security Control | Verified By |
+|-----------------|-------------|
+| Firebase JWT verification | `middleware.test.js` (5 tests) |
+| RBAC enforcement | `middleware.test.js` (3 tests) |
+| Team tenant isolation | `middleware.test.js` (2 tests) |
+| XSS sanitization | `config.test.js` (5 tests) |
+| SQL injection prevention | `services.test.js` (parameterized queries) |
+| Helmet security headers | `api.test.js` (2 tests) |
+| CORS origin validation | `api.test.js` (1 test) |
+| Body size limits | `api.test.js` (1 test) |
+| File type allowlisting | `config.test.js` (1 test) |
+| Socket input validation | `socket.test.js` (4 tests) |
 
 ---
 

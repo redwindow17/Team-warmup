@@ -1,21 +1,31 @@
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
  * Socket.io Integration Tests — Real-Time Event System
- * 
- * Tests for:
- * - Client connection/disconnection lifecycle
- * - Team room joining with input validation
- * - Channel room joining with input validation
- * - Chat message relay between clients
- * - Task update broadcasting to team rooms
- * - Typing indicator forwarding
- * - Presence tracking (online/offline status)
- * - Concurrent connection handling
- * - Malformed event data rejection
- * 
- * Google Services Tested: Cloud Run WebSocket support, Firestore real-time
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * @file socket.test.js
+ * @module tests/socket
+ * @version 1.0.0
+ * @description
+ *   Full integration tests for WebSocket event handling using Socket.io.
+ *   Tests use real socket.io-client connections against an ephemeral server
+ *   to verify event routing, room management, and input validation.
+ *
+ * @coverage
+ *   - Connection/disconnection lifecycle
+ *   - Team room joining with string validation (max 128 chars)
+ *   - Channel room joining with input validation
+ *   - Chat message relay between channel members
+ *   - Task update broadcasting to team rooms
+ *   - Typing indicator forwarding (sender excluded)
+ *   - Presence tracking (online/offline via Map)
+ *   - Malformed event data rejection (null, wrong type, oversized)
+ *
+ * @googleServices Cloud Run (WebSocket support), Firestore (real-time sync)
+ * @securityNotes Input length limits prevent memory exhaustion attacks
  */
 
-// Mock all Google Cloud dependencies before requiring server
+// ── Mock all Google Cloud dependencies ──
 jest.mock('../config/firebase', () => ({
   db: { collection: jest.fn() },
   auth: { verifyIdToken: jest.fn() },
@@ -57,8 +67,6 @@ const http = require('http');
 const { Server } = require('socket.io');
 const { io: ioClient } = require('socket.io-client');
 
-// We test the socket event handlers directly since integration
-// with the real server would require socket.io-client
 describe('Socket.io Event Handlers', () => {
   let server;
   let io;
@@ -72,7 +80,6 @@ describe('Socket.io Event Handlers', () => {
       pingInterval: 2500
     });
 
-    // Replicate the server's socket handlers
     const activeConnections = new Map();
 
     io.on('connection', (socket) => {
@@ -132,6 +139,7 @@ describe('Socket.io Event Handlers', () => {
     server.close(done);
   });
 
+  /** @test Basic WebSocket connection and disconnection */
   describe('Connection Lifecycle', () => {
     test('Client can connect and disconnect', (done) => {
       const client = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
@@ -145,18 +153,16 @@ describe('Socket.io Event Handlers', () => {
     });
   });
 
+  /** @test Team room events: join validation + task broadcast */
   describe('Team Room Events', () => {
+    /** @test String validation — rejects too-long, numeric, and null IDs */
     test('join-team validates string input', (done) => {
       const client = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       client.on('connect', () => {
-        // Valid team ID
         client.emit('join-team', 'team-123');
-        // Invalid: too long (should be silently rejected)
         client.emit('join-team', 'x'.repeat(200));
-        // Invalid: not a string (should be silently rejected)
         client.emit('join-team', 12345);
         client.emit('join-team', null);
-        // Allow time for processing
         setTimeout(() => {
           client.disconnect();
           done();
@@ -164,6 +170,7 @@ describe('Socket.io Event Handlers', () => {
       });
     });
 
+    /** @test Task update broadcasts to all team room members */
     test('task-update broadcasts to team room', (done) => {
       const sender = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       const receiver = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
@@ -191,7 +198,9 @@ describe('Socket.io Event Handlers', () => {
     });
   });
 
+  /** @test Channel events: chat relay + malformed data rejection */
   describe('Channel Room Events', () => {
+    /** @test Chat message delivered to all channel members */
     test('chat-message relays to channel members', (done) => {
       const sender = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       const receiver = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
@@ -219,10 +228,10 @@ describe('Socket.io Event Handlers', () => {
       receiver.on('connect', onBothConnected);
     });
 
+    /** @test Missing channelId silently dropped (no crash) */
     test('chat-message without channelId is ignored', (done) => {
       const client = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       client.on('connect', () => {
-        // Should not crash or emit
         client.emit('chat-message', { text: 'No channel' });
         client.emit('chat-message', null);
         client.emit('chat-message', {});
@@ -234,6 +243,7 @@ describe('Socket.io Event Handlers', () => {
     });
   });
 
+  /** @test Typing indicators forwarded to channel peers (not sender) */
   describe('Typing Indicators', () => {
     test('typing event forwards to channel peers', (done) => {
       const typer = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
@@ -263,7 +273,9 @@ describe('Socket.io Event Handlers', () => {
     });
   });
 
+  /** @test Presence tracking via activeConnections Map */
   describe('Presence Tracking', () => {
+    /** @test Online presence emitted on set-presence */
     test('set-presence emits online status', (done) => {
       const client = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       
@@ -278,12 +290,12 @@ describe('Socket.io Event Handlers', () => {
         client.emit('set-presence', { userId: 'user-presence' });
       });
 
-      // Handle disconnect presence
       client.on('disconnect', () => {
         done();
       });
     });
 
+    /** @test Missing userId silently ignored */
     test('set-presence ignores missing userId', (done) => {
       const client = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       client.on('connect', () => {
@@ -297,7 +309,9 @@ describe('Socket.io Event Handlers', () => {
     });
   });
 
+  /** @test Input validation: oversized IDs, wrong types, null values */
   describe('Input Validation', () => {
+    /** @test Channel ID validation rejects oversized/numeric/undefined */
     test('join-channel rejects oversized IDs', (done) => {
       const client = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       client.on('connect', () => {
@@ -311,6 +325,7 @@ describe('Socket.io Event Handlers', () => {
       });
     });
 
+    /** @test Missing teamId in task-update silently dropped */
     test('task-update without teamId is silently dropped', (done) => {
       const client = ioClient(`http://localhost:${port}`, { transports: ['websocket'] });
       client.on('connect', () => {

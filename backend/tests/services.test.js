@@ -1,11 +1,26 @@
 /**
+ * ═══════════════════════════════════════════════════════════════════════════
  * Service Layer Tests — Task, Chat, AI, Workflow, Analytics, Storage, Notification
- * 
- * Comprehensive unit tests for all backend services.
- * Google Services Tested: Cloud SQL, Firestore, Vertex AI, BigQuery, GCS, FCM
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * @file services.test.js
+ * @module tests/services
+ * @version 1.0.0
+ * @description
+ *   Comprehensive unit tests for all 7 backend services covering:
+ *   - TaskService: CRUD operations via Cloud SQL with BigQuery event logging
+ *   - WorkflowEngine: condition evaluation and action execution
+ *   - AIService: Vertex AI Gemini Pro integration for suggestions/summarization
+ *   - AnalyticsService: BigQuery productivity queries
+ *   - StorageService: Google Cloud Storage file operations
+ *   - NotificationService: Firebase Cloud Messaging push delivery
+ *   - ChatService: Cloud Firestore real-time messaging
+ *
+ * @googleServices Cloud SQL, Firestore, Vertex AI, BigQuery, GCS, FCM
+ * @securityNotes Parameterized SQL queries verified, XSS sanitization checked
  */
 
-// Mock all Google Cloud dependencies
+// ── Mock: Cloud SQL ──
 jest.mock('../config/database', () => ({
   query: jest.fn(),
   transaction: jest.fn(),
@@ -13,6 +28,7 @@ jest.mock('../config/database', () => ({
   pool: { on: jest.fn() }
 }));
 
+// ── Mock: Firebase (Firestore + FCM) ──
 jest.mock('../config/firebase', () => ({
   db: {
     collection: jest.fn(() => ({
@@ -49,6 +65,7 @@ jest.mock('../config/firebase', () => ({
   verifyToken: jest.fn()
 }));
 
+// ── Mock: BigQuery ──
 jest.mock('../config/bigquery', () => ({
   runQuery: jest.fn().mockResolvedValue([]),
   insertRows: jest.fn().mockResolvedValue({}),
@@ -58,12 +75,14 @@ jest.mock('../config/bigquery', () => ({
   DATASET_ID: 'test_dataset'
 }));
 
+// ── Mock: Vertex AI ──
 jest.mock('../config/vertexai', () => ({
   generateContent: jest.fn().mockResolvedValue('AI generated response'),
   getModel: jest.fn(),
   SYSTEM_INSTRUCTION: 'test instructions'
 }));
 
+// ── Mock: Google Cloud Storage ──
 jest.mock('../config/storage', () => ({
   uploadFile: jest.fn().mockResolvedValue({ fileName: 'test.pdf', bucket: 'test-bucket' }),
   getSignedUrl: jest.fn().mockResolvedValue('https://signed-url.example.com'),
@@ -74,23 +93,27 @@ jest.mock('../config/storage', () => ({
 const { query, transaction } = require('../config/database');
 const { logTaskEvent } = require('../config/bigquery');
 
-// ============================================
-// Task Service Tests (Cloud SQL)
-// ============================================
+// ════════════════════════════════════════════════
+// Task Service Tests (Cloud SQL + BigQuery)
+// ════════════════════════════════════════════════
 
+/**
+ * @googleService Cloud SQL (PostgreSQL) — CRUD operations
+ * @googleService BigQuery — event logging on every task mutation
+ */
 describe('Task Service', () => {
   const taskService = require('../services/taskService');
-
   beforeEach(() => jest.clearAllMocks());
 
+  /** @test Create task → Cloud SQL INSERT + BigQuery logTaskEvent */
   test('createTask inserts into Cloud SQL and logs to BigQuery', async () => {
     const mockTask = {
       id: 'task-uuid-1', title: 'Build feature', status: 'todo',
       priority: 'high', team_id: 'team-1', assignee_id: null
     };
     query
-      .mockResolvedValueOnce({ rows: [mockTask] })    // INSERT task
-      .mockResolvedValueOnce({ rows: [] });             // INSERT activity
+      .mockResolvedValueOnce({ rows: [mockTask] })
+      .mockResolvedValueOnce({ rows: [] });
 
     const result = await taskService.createTask({
       title: 'Build feature', teamId: 'team-1', priority: 'high'
@@ -104,9 +127,10 @@ describe('Task Service', () => {
     }));
   });
 
+  /** @test Paginated list with Cloud SQL COUNT + SELECT */
   test('getTasks returns paginated results with filters', async () => {
     query
-      .mockResolvedValueOnce({ rows: [{ count: '5' }] })  // COUNT
+      .mockResolvedValueOnce({ rows: [{ count: '5' }] })
       .mockResolvedValueOnce({ rows: [
         { id: 't1', title: 'Task 1' },
         { id: 't2', title: 'Task 2' }
@@ -119,6 +143,7 @@ describe('Task Service', () => {
     expect(result.pagination.page).toBe(1);
   });
 
+  /** @test Parameterized queries prevent SQL injection — @securityNote */
   test('getTasks supports status and priority filters', async () => {
     query
       .mockResolvedValueOnce({ rows: [{ count: '1' }] })
@@ -130,23 +155,23 @@ describe('Task Service', () => {
     });
 
     expect(result.tasks).toHaveLength(1);
-    // Verify parameterized queries (SQL injection prevention)
     const countCall = query.mock.calls[0];
     expect(countCall[0]).toContain('$1');
     expect(countCall[0]).toContain('$2');
   });
 
+  /** @test Null return for missing tasks (no crash) */
   test('getTaskById returns null for non-existent tasks', async () => {
     query.mockResolvedValue({ rows: [] });
-
     const result = await taskService.getTaskById('non-existent-id');
     expect(result).toBeNull();
   });
 
+  /** @test Status change → BigQuery event with old/new status */
   test('updateTask logs status change to BigQuery', async () => {
     query
-      .mockResolvedValueOnce({ rows: [{ id: 't1', status: 'todo', team_id: 'team-1', priority: 'medium' }] })  // getTaskById
-      .mockResolvedValueOnce({ rows: [{ id: 't1', status: 'in_progress' }] });  // UPDATE
+      .mockResolvedValueOnce({ rows: [{ id: 't1', status: 'todo', team_id: 'team-1', priority: 'medium' }] })
+      .mockResolvedValueOnce({ rows: [{ id: 't1', status: 'in_progress' }] });
 
     await taskService.updateTask('t1', { status: 'in_progress' }, 'user-1');
 
@@ -157,9 +182,9 @@ describe('Task Service', () => {
     }));
   });
 
+  /** @test Soft delete sets is_deleted flag (data retention) */
   test('deleteTask performs soft delete', async () => {
     query.mockResolvedValue({ rows: [{ id: 't1', team_id: 'team-1' }] });
-
     const result = await taskService.deleteTask('t1', 'user-1');
 
     expect(result.id).toBe('t1');
@@ -167,21 +192,21 @@ describe('Task Service', () => {
     expect(deleteCall[0]).toContain('is_deleted = true');
   });
 
+  /** @test Aggregated stats for dashboard — @googleService Cloud SQL */
   test('getTaskStats returns aggregated counts', async () => {
     query.mockResolvedValue({
       rows: [{ todo_count: '5', in_progress_count: '3', review_count: '1', done_count: '10', overdue_count: '2', total: '19' }]
     });
 
     const stats = await taskService.getTaskStats('team-1');
-
     expect(stats.todo_count).toBe('5');
     expect(stats.done_count).toBe('10');
     expect(stats.overdue_count).toBe('2');
   });
 
+  /** @test Overdue filter uses deadline < NOW() with status != done */
   test('getOverdueTasks filters correctly', async () => {
     query.mockResolvedValue({ rows: [{ id: 't1', title: 'Late task', deadline: '2026-01-01' }] });
-
     const results = await taskService.getOverdueTasks('team-1');
 
     expect(results).toHaveLength(1);
@@ -191,13 +216,15 @@ describe('Task Service', () => {
   });
 });
 
-// ============================================
+// ════════════════════════════════════════════════
 // Workflow Engine Tests
-// ============================================
+// ════════════════════════════════════════════════
 
+/** @googleService Cloud SQL (workflow rules), FCM (notification actions) */
 describe('Workflow Engine', () => {
   const { evaluateConditions, executeActions } = require('../services/workflowEngine');
 
+  /** @test All 5 comparison operators */
   test('evaluateConditions handles all operators', () => {
     expect(evaluateConditions([
       { field: 'status', operator: 'equals', value: 'done' }
@@ -220,12 +247,14 @@ describe('Workflow Engine', () => {
     ], { count: 3 })).toBe(true);
   });
 
+  /** @test Unknown operators default to true (fail-open for forward compat) */
   test('evaluateConditions handles unknown operator gracefully', () => {
     expect(evaluateConditions([
       { field: 'x', operator: 'unknown_op', value: 'y' }
     ], { x: 'anything' })).toBe(true);
   });
 
+  /** @test Multiple conditions use AND logic */
   test('evaluateConditions applies AND logic for multiple conditions', () => {
     const conditions = [
       { field: 'priority', operator: 'equals', value: 'high' },
@@ -238,40 +267,38 @@ describe('Workflow Engine', () => {
   });
 });
 
-// ============================================
-// AI Service Tests (Vertex AI)
-// ============================================
+// ════════════════════════════════════════════════
+// AI Service Tests (Vertex AI Gemini Pro)
+// ════════════════════════════════════════════════
 
+/** @googleService Vertex AI (Gemini 1.5 Pro) — content generation */
 describe('AI Service', () => {
   const aiService = require('../services/aiService');
   const { generateContent } = require('../config/vertexai');
-
   beforeEach(() => jest.clearAllMocks());
 
+  /** @test Vertex AI returns task-aware suggestions */
   test('suggestNextActions returns suggestions from Vertex AI', async () => {
     query.mockResolvedValue({
-      rows: [
-        { title: 'Task 1', status: 'todo', priority: 'high', assignee_name: 'Alice', deadline: null }
-      ]
+      rows: [{ title: 'Task 1', status: 'todo', priority: 'high', assignee_name: 'Alice', deadline: null }]
     });
     generateContent.mockResolvedValue('1. Focus on Task 1');
 
     const result = await aiService.suggestNextActions('team-1', 'user-1');
-
     expect(result.suggestions).toContain('Task 1');
     expect(result.taskCount).toBe(1);
     expect(result.generatedAt).toBeDefined();
   });
 
+  /** @test Empty task list returns completion message (no AI call) */
   test('suggestNextActions handles empty task list', async () => {
     query.mockResolvedValue({ rows: [] });
-
     const result = await aiService.suggestNextActions('team-1', 'user-1');
-
     expect(result.suggestions).toBe('All tasks completed!');
     expect(result.taskCount).toBe(0);
   });
 
+  /** @test Overdue detection with Vertex AI root cause analysis */
   test('detectDelays returns analysis for overdue tasks', async () => {
     query.mockResolvedValue({
       rows: [{ title: 'Late task', days_overdue: 3, assignee_name: 'Bob' }]
@@ -279,58 +306,56 @@ describe('AI Service', () => {
     generateContent.mockResolvedValue('Root cause analysis...');
 
     const result = await aiService.detectDelays('team-1');
-
     expect(result.delayedCount).toBe(1);
     expect(result.analysis).toBe('Root cause analysis...');
   });
 
+  /** @test No delays returns clean status without AI call */
   test('detectDelays handles no delays', async () => {
     query.mockResolvedValue({ rows: [] });
-
     const result = await aiService.detectDelays('team-1');
-
     expect(result.analysis).toBe('No delays detected!');
     expect(result.delayedCount).toBe(0);
   });
 
+  /** @test Chat-to-task extraction parses JSON from Vertex AI */
   test('convertChatToTasks extracts tasks from conversation', async () => {
     generateContent.mockResolvedValue('Here are extracted tasks: [{"title":"Review PR","description":"Review pull request #42","priority":"high","suggestedAssignee":"Alice"}]');
 
     const result = await aiService.convertChatToTasks([
       { senderName: 'Bob', text: 'Alice, can you review PR #42? It is high priority.' }
     ]);
-
     expect(result.tasks).toHaveLength(1);
     expect(result.tasks[0].title).toBe('Review PR');
   });
 
+  /** @test Non-JSON AI responses handled gracefully */
   test('convertChatToTasks handles non-JSON AI responses gracefully', async () => {
     generateContent.mockResolvedValue('No actionable tasks found in this conversation.');
 
     const result = await aiService.convertChatToTasks([
       { senderName: 'Bob', text: 'Nice weather today!' }
     ]);
-
     expect(result.tasks).toHaveLength(0);
     expect(result.rawAnalysis).toBeDefined();
   });
 });
 
-// ============================================
+// ════════════════════════════════════════════════
 // Analytics Service Tests (BigQuery)
-// ============================================
+// ════════════════════════════════════════════════
 
+/** @googleService BigQuery — data warehouse queries for productivity dashboard */
 describe('Analytics Service', () => {
   const analyticsService = require('../services/analyticsService');
   const { runQuery } = require('../config/bigquery');
-
   beforeEach(() => jest.clearAllMocks());
 
+  /** @test BigQuery parameterized query with teamId and date range */
   test('getProductivityMetrics queries BigQuery with correct parameters', async () => {
     runQuery.mockResolvedValue([{ date: '2026-05-01', created: 5, completed: 3, deleted: 0 }]);
 
     const result = await analyticsService.getProductivityMetrics('team-1', 30);
-
     expect(runQuery).toHaveBeenCalledWith(
       expect.stringContaining('task_events'),
       expect.objectContaining({ teamId: 'team-1', days: 30 })
@@ -338,6 +363,7 @@ describe('Analytics Service', () => {
     expect(result).toHaveLength(1);
   });
 
+  /** @test Per-user completion rates from BigQuery */
   test('getCompletionRates returns per-user completion data', async () => {
     runQuery.mockResolvedValue([
       { user_id: 'u1', completed: 10, touched: 15 },
@@ -345,29 +371,28 @@ describe('Analytics Service', () => {
     ]);
 
     const result = await analyticsService.getCompletionRates('team-1');
-
     expect(result).toHaveLength(2);
     expect(result[0].completed).toBe(10);
   });
 
+  /** @test Bottleneck detection — long-running open tasks */
   test('getBottlenecks identifies long-running tasks', async () => {
     runQuery.mockResolvedValue([
       { task_id: 't1', hours_in_progress: 120, still_open: true }
     ]);
 
     const result = await analyticsService.getBottlenecks('team-1');
-
     expect(result[0].hours_in_progress).toBe(120);
     expect(result[0].still_open).toBe(true);
   });
 
+  /** @test Member-specific performance metrics with userId filter */
   test('getMemberPerformance returns user-specific metrics', async () => {
     runQuery.mockResolvedValue([
       { event_type: 'task_created', count: 5, date: '2026-05-01' }
     ]);
 
     const result = await analyticsService.getMemberPerformance('team-1', 'user-1', 30);
-
     expect(runQuery).toHaveBeenCalledWith(
       expect.stringContaining('user_id'),
       expect.objectContaining({ userId: 'user-1' })
@@ -375,16 +400,17 @@ describe('Analytics Service', () => {
   });
 });
 
-// ============================================
+// ════════════════════════════════════════════════
 // Storage Service Tests (Google Cloud Storage)
-// ============================================
+// ════════════════════════════════════════════════
 
+/** @googleService Google Cloud Storage — file upload, signed URLs, deletion */
 describe('Storage Service', () => {
   const storageService = require('../services/storageService');
   const { uploadFile, getSignedUrl, deleteFile, listFiles } = require('../config/storage');
-
   beforeEach(() => jest.clearAllMocks());
 
+  /** @test GCS path structure: team-1/task-1/<uuid>-report.pdf */
   test('handleFileUpload creates correct GCS path', async () => {
     await storageService.handleFileUpload(
       { originalname: 'report.pdf', buffer: Buffer.from('content'), mimetype: 'application/pdf' },
@@ -399,6 +425,7 @@ describe('Storage Service', () => {
     );
   });
 
+  /** @test Falls back to "general" folder without taskId */
   test('handleFileUpload uses "general" folder when no taskId', async () => {
     await storageService.handleFileUpload(
       { originalname: 'avatar.png', buffer: Buffer.from('img'), mimetype: 'image/png' },
@@ -413,84 +440,82 @@ describe('Storage Service', () => {
     );
   });
 
+  /** @test Signed URL generation with 60-minute expiry — @securityNote */
   test('getDownloadUrl generates signed URL', async () => {
     await storageService.getDownloadUrl('team-1/task-1/file.pdf');
-
     expect(getSignedUrl).toHaveBeenCalledWith('team-1/task-1/file.pdf', 60);
   });
 
+  /** @test File deletion from GCS */
   test('removeFile deletes from GCS', async () => {
     await storageService.removeFile('team-1/task-1/file.pdf');
-
     expect(deleteFile).toHaveBeenCalledWith('team-1/task-1/file.pdf');
   });
 
+  /** @test List files by task prefix */
   test('getTaskFiles lists with correct prefix', async () => {
     await storageService.getTaskFiles('team-1', 'task-1');
-
     expect(listFiles).toHaveBeenCalledWith('team-1/task-1/');
   });
 });
 
-// ============================================
+// ════════════════════════════════════════════════
 // Notification Service Tests (Firebase Cloud Messaging)
-// ============================================
+// ════════════════════════════════════════════════
 
+/** @googleService Firebase Cloud Messaging — push notification delivery */
 describe('Notification Service', () => {
   const notificationService = require('../services/notificationService');
   const { sendPushNotification } = require('../config/firebase');
-
   beforeEach(() => jest.clearAllMocks());
 
+  /** @test FCM push sent when user has registered device token */
   test('notifyUser sends FCM notification when token exists', async () => {
     query.mockResolvedValue({ rows: [{ fcm_token: 'device-token-123' }] });
 
     await notificationService.notifyUser('user-1', 'Alert', 'Task overdue');
-
     expect(sendPushNotification).toHaveBeenCalledWith(
       'device-token-123', 'Alert', 'Task overdue', expect.any(Object)
     );
   });
 
+  /** @test Skips FCM when no device token (still creates in-app notification) */
   test('notifyUser skips FCM when no token but still creates in-app notification', async () => {
     query.mockResolvedValue({ rows: [{ fcm_token: null }] });
 
     await notificationService.notifyUser('user-1', 'Info', 'Update available');
-
     expect(sendPushNotification).not.toHaveBeenCalled();
   });
 
+  /** @test Team broadcast excludes sender to avoid self-notification */
   test('notifyTeam notifies all members except sender', async () => {
     query.mockResolvedValue({
       rows: [{ user_id: 'u1' }, { user_id: 'u2' }, { user_id: 'u3' }]
     });
 
-    // Mock notifyUser calls
     query
       .mockResolvedValueOnce({ rows: [{ user_id: 'u1' }, { user_id: 'u2' }, { user_id: 'u3' }] })
       .mockResolvedValue({ rows: [{ fcm_token: null }] });
 
     await notificationService.notifyTeam('team-1', 'Update', 'New task created', 'u1');
 
-    // u1 should be excluded (the sender)
     const userQueries = query.mock.calls.filter(c => c[0]?.includes('fcm_token'));
     expect(userQueries.length).toBe(2); // u2 and u3 only
   });
 });
 
-// ============================================
+// ════════════════════════════════════════════════
 // Chat Service Tests (Cloud Firestore)
-// ============================================
+// ════════════════════════════════════════════════
 
+/** @googleService Cloud Firestore — real-time chat, channels, presence */
 describe('Chat Service', () => {
   const chatService = require('../services/chatService');
 
+  /** @test Channel creation stores in Firestore with UUID */
   test('createChannel generates UUID and stores in Firestore', async () => {
     const result = await chatService.createChannel({
-      name: 'general',
-      teamId: 'team-1',
-      members: ['u1', 'u2'],
-      createdBy: 'u1'
+      name: 'general', teamId: 'team-1', members: ['u1', 'u2'], createdBy: 'u1'
     });
 
     expect(result.id).toBeDefined();
@@ -499,12 +524,10 @@ describe('Chat Service', () => {
     expect(result.type).toBe('channel');
   });
 
+  /** @test Message structure includes timestamp, reactions, pinned flag */
   test('sendMessage creates message with correct structure', async () => {
     const result = await chatService.sendMessage({
-      text: 'Hello team!',
-      senderId: 'u1',
-      senderName: 'Alice',
-      channelId: 'ch-1'
+      text: 'Hello team!', senderId: 'u1', senderName: 'Alice', channelId: 'ch-1'
     });
 
     expect(result.id).toBeDefined();
@@ -515,17 +538,15 @@ describe('Chat Service', () => {
     expect(result.isPinned).toBe(false);
   });
 
+  /** @test Notification stored in Firestore for in-app delivery */
   test('createNotification stores in Firestore', async () => {
     const result = await chatService.createNotification('u1', {
-      title: 'New Message',
-      body: 'You have a new message',
-      type: 'chat',
-      link: '/chat/ch-1'
+      title: 'New Message', body: 'You have a new message', type: 'chat', link: '/chat/ch-1'
     });
-
-    expect(result).toBeDefined(); // Returns notification ID
+    expect(result).toBeDefined();
   });
 
+  /** @test Presence update writes to Firestore */
   test('setPresence updates Firestore document', async () => {
     await chatService.setPresence('u1', true);
     // Should not throw

@@ -378,24 +378,29 @@ process.on('uncaughtException', (error) => {
 // ============================================
 
 const PORT = process.env.PORT || 5000;
-httpServer.listen(PORT, () => {
-  console.log('');
-  console.log('  ╔═══════════════════════════════════════════╗');
-  console.log('  ║          SyncSphere API Server            ║');
-  console.log(`  ║       Running on port ${PORT}                ║`);
-  console.log('  ║                                           ║');
-  console.log('  ║  Google Cloud Services:                   ║');
-  console.log('  ║   • Firebase Auth       ✓                 ║');
-  console.log('  ║   • Cloud Firestore     ✓                 ║');
-  console.log('  ║   • Cloud SQL (PG)      ✓                 ║');
-  console.log('  ║   • Vertex AI Gemini    ✓                 ║');
-  console.log('  ║   • Cloud Storage       ✓                 ║');
-  console.log('  ║   • BigQuery            ✓                 ║');
-  console.log('  ║   • Cloud Messaging     ✓                 ║');
-  console.log('  ║   • Cloud Run           ✓                 ║');
-  console.log('  ║   • Google Calendar     ✓                 ║');
-  console.log('  ╚═══════════════════════════════════════════╝');
-  console.log('');
-});
+
+// Do NOT auto-listen when imported by test files — each test suite creates
+// its own ephemeral server on port 0 to avoid EADDRINUSE conflicts in CI.
+if (process.env.NODE_ENV !== 'test') {
+  httpServer.listen(PORT, () => {
+    console.log('');
+    console.log('  ╔═══════════════════════════════════════════╗');
+    console.log('  ║          SyncSphere API Server            ║');
+    console.log(`  ║       Running on port ${PORT}                ║`);
+    console.log('  ║                                           ║');
+    console.log('  ║  Google Cloud Services:                   ║');
+    console.log('  ║   • Firebase Auth       ✓                 ║');
+    console.log('  ║   • Cloud Firestore     ✓                 ║');
+    console.log('  ║   • Cloud SQL (PG)      ✓                 ║');
+    console.log('  ║   • Vertex AI Gemini    ✓                 ║');
+    console.log('  ║   • Cloud Storage       ✓                 ║');
+    console.log('  ║   • BigQuery            ✓                 ║');
+    console.log('  ║   • Cloud Messaging     ✓                 ║');
+    console.log('  ║   • Cloud Run           ✓                 ║');
+    console.log('  ║   • Google Calendar     ✓                 ║');
+    console.log('  ╚═══════════════════════════════════════════╝');
+    console.log('');
+  });
+}
 
 module.exports = { app, httpServer, io };
