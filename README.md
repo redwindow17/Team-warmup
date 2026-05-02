@@ -158,7 +158,12 @@ Team-warmup/
 │   │   ├── helpers.js
 │   │   └── constants.js
 │   └── tests/
-│       └── tasks.test.js       # Unit tests
+│       ├── api.test.js         # API integration + health check
+│       ├── config.test.js      # BigQuery, SQL, constants, helpers
+│       ├── middleware.test.js   # Auth, RBAC, validation middleware
+│       ├── services.test.js     # All 7 services (Cloud SQL/Firestore/Vertex AI/GCS/FCM/BigQuery)
+│       ├── socket.test.js       # Socket.io real-time event handlers
+│       └── tasks.test.js       # Workflow engine + helpers baseline
 │
 └── frontend/
     ├── index.html
@@ -284,25 +289,58 @@ gcloud builds submit --config=cloudbuild.yaml
 - **Firebase Auth** token verification on every request
 - **Role-based access control** (admin/manager/member)
 - **Input validation** with express-validator
-- **Rate limiting** (200 req/15min per IP)
-- **Helmet.js** security headers
+- **Rate limiting** — 200 req/15min (standard), 30 req/15min (AI endpoints)
+- **Helmet.js** security headers (CSP, HSTS, X-Frame-Options, etc.)
 - **Parameterized SQL queries** (no SQL injection)
-- **Signed URLs** for file access (time-limited)
+- **Signed URLs** for file access (time-limited, Google Cloud Storage)
+- **CORS origin whitelist** with configurable `ALLOWED_ORIGINS` env var
+- **Request correlation IDs** for Cloud Logging traceability
+- **Body size limits** (10MB max) to prevent DoS
+
+## Performance & Efficiency
+
+- **Gzip/deflate compression** via `compression` middleware (60-80% bandwidth reduction)
+- **ETag caching** for conditional GET requests
+- **Connection pooling** via `pg` Pool with configurable limits
+- **Static asset caching** — 1-year Cache-Control for hashed Vite bundles
+- **Slow request detection** — warns for requests > 1000ms
+- **Cloud Run auto-scaling** with graceful shutdown (SIGTERM/SIGINT handling)
+
+## Testing
+
+Runs **100+ tests** across 6 test suites:
+
+```bash
+npm test           # Run all tests with coverage
+npm run test:ci    # CI mode with reporters
+npm run lint       # ESLint code quality check
+```
+
+| Test Suite | Coverage |
+|------------|----------|
+| `api.test.js` | Health check, 404, security headers, auth validation |
+| `config.test.js` | BigQuery config, SQL pool, constants, helpers |
+| `middleware.test.js` | Firebase auth, RBAC roles, input validation |
+| `services.test.js` | Task, Chat, AI, Workflow, Analytics, Storage, Notification |
+| `socket.test.js` | WebSocket connection, rooms, chat relay, presence |
+| `tasks.test.js` | Workflow engine, helpers baseline |
 
 ---
 
 ## Future Improvements
 
-- [ ] Google Calendar API deep integration
+- [ ] Google Calendar API deep integration (deadline sync)
 - [ ] Video conferencing (Google Meet API)
-- [ ] Advanced workflow builder with visual editor
-- [ ] Mobile app (React Native)
-- [ ] Slack/Teams integration
-- [ ] Custom AI model fine-tuning on team data
-- [ ] Advanced RBAC with custom permissions
-- [ ] Audit logging with Cloud Logging
-- [ ] Multi-language support (i18n)
-- [ ] Offline mode with service workers
+- [ ] Advanced workflow builder with visual drag-and-drop editor
+- [ ] Mobile app (React Native + Firebase)
+- [ ] Slack/Teams integration via webhooks
+- [ ] Custom AI model fine-tuning on team data (Vertex AI Custom Training)
+- [ ] Advanced RBAC with custom permissions and audit trails
+- [ ] Cloud Logging structured audit logging
+- [ ] Multi-language support (i18n / Cloud Translation API)
+- [ ] Offline mode with service workers (PWA)
+- [ ] Real-time collaborative document editing
+- [ ] Advanced BigQuery ML for predictive deadline analysis
 
 ---
 

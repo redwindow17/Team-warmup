@@ -37,6 +37,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -156,6 +157,17 @@ const aiLimiter = rateLimit({
 });
 app.use('/api/', standardLimiter);
 app.use('/api/ai/', aiLimiter);
+
+// Response compression — gzip/deflate for bandwidth optimization (Cloud Run)
+app.use(compression({
+  level: 6, // Balanced between speed and compression ratio
+  threshold: 1024, // Only compress responses > 1KB
+  filter: (req, res) => {
+    // Don't compress responses with cache-control: no-transform
+    if (req.headers['x-no-compression']) return false;
+    return compression.filter(req, res);
+  }
+}));
 
 // Body parsing with size limits
 app.use(express.json({ limit: '10mb' }));

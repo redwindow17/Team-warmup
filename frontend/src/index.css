@@ -376,3 +376,106 @@ body {
     font-size: 1.5rem;
   }
 }
+
+/* ---- Accessibility: Reduced Motion ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .glass-card:hover,
+  .stat-card:hover,
+  .btn-primary:hover {
+    transform: none !important;
+  }
+}
+
+/* ---- Accessibility: Focus Visible ---- */
+*:focus-visible {
+  outline: 3px solid var(--primary-light);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Buttons and interactive elements focus */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--primary-light);
+  outline-offset: 2px;
+}
+
+/* Remove default outline for mouse clicks */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ---- Accessibility: High Contrast Mode ---- */
+@media (prefers-contrast: high) {
+  :root {
+    --border: rgba(148, 163, 184, 0.4);
+    --border-hover: rgba(99, 102, 241, 0.8);
+    --text-secondary: #b0bec5;
+    --text-muted: #90a4ae;
+  }
+  .glass-card,
+  .stat-card {
+    border-width: 2px;
+  }
+  .btn-primary {
+    font-weight: 700;
+  }
+}
+
+/* ---- Accessibility: Screen Reader Only ---- */
+/* Both .sr-only (legacy) and .visually-hidden (Bootstrap 5 standard) */
+.sr-only,
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only-focusable:focus,
+.visually-hidden-focusable:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* ---- Print Styles ---- */
+@media print {
+  .sidebar,
+  .sidebar-overlay,
+  .topbar,
+  .ai-assistant {
+    display: none !important;
+  }
+  .app-layout__content {
+    margin: 0 !important;
+    padding: 1rem !important;
+  }
+  body {
+    background: white;
+    color: black;
+  }
+}
+
