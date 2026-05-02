@@ -10,7 +10,11 @@
     "build": "cd frontend && npm run build",
     "start": "cd backend && npm start",
     "test": "cd backend && npm test",
-    "setup": "cd backend && npm install && cd ../frontend && npm install"
+    "test:ci": "cd backend && npm run test:ci",
+    "lint": "cd backend && npm run lint",
+    "lint:fix": "cd backend && npm run lint:fix",
+    "setup": "cd backend && npm install && cd ../frontend && npm install",
+    "validate": "npm run lint && npm test"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
@@ -19,3 +23,4 @@
     "node": ">=20.0.0"
   }
 }
+

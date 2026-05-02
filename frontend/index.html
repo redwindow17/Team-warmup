@@ -1,16 +1,78 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="description" content="SyncSphere — AI-Powered Team Coordination Platform. Smart task management, real-time collaboration, and intelligent workflow automation powered by Google Cloud." />
-  <meta name="keywords" content="team collaboration, task management, AI assistant, project management, workflow automation" />
+  <meta name="keywords" content="team collaboration, task management, AI assistant, project management, workflow automation, Google Cloud" />
+  <meta name="author" content="SyncSphere Team" />
+  <meta name="theme-color" content="#6366f1" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#1e1b4b" media="(prefers-color-scheme: dark)" />
+  <meta name="color-scheme" content="light dark" />
+
+  <!-- Open Graph / Social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="SyncSphere — AI-Powered Team Coordination" />
+  <meta property="og:description" content="Smart collaboration combining Slack + Trello + Notion, enhanced with Google Cloud AI." />
+  <meta property="og:site_name" content="SyncSphere" />
+
+  <!-- Accessibility: ensure reduced motion is respected -->
+  <meta name="format-detection" content="telephone=no" />
+
   <title>SyncSphere — AI-Powered Team Coordination</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Performance: preconnect to external origins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="dns-prefetch" href="https://apis.google.com" />
+  <link rel="dns-prefetch" href="https://firebaseinstallations.googleapis.com" />
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Accessibility: Skip Navigation Link (visually hidden until focused) -->
+  <style>
+    .skip-to-main {
+      position: absolute;
+      left: -9999px;
+      top: auto;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      z-index: 10000;
+      padding: 1rem 1.5rem;
+      background: #6366f1;
+      color: white;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      text-decoration: none;
+      border-radius: 0 0 8px 0;
+      font-size: 0.875rem;
+    }
+    .skip-to-main:focus {
+      left: 0;
+      top: 0;
+      width: auto;
+      height: auto;
+      outline: 3px solid #818cf8;
+      outline-offset: 2px;
+    }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
+  <!-- Accessibility: Skip navigation for keyboard/screen reader users -->
+  <a href="#main-content" class="skip-to-main">Skip to main content</a>
+
+  <div id="root" role="application" aria-label="SyncSphere Application"></div>
+
+  <!-- Accessibility: Noscript fallback -->
+  <noscript>
+    <div style="padding: 2rem; text-align: center; font-family: sans-serif;">
+      <h1>SyncSphere requires JavaScript</h1>
+      <p>Please enable JavaScript in your browser to use SyncSphere — AI-Powered Team Coordination Platform.</p>
+    </div>
+  </noscript>
+
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>
