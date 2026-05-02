@@ -1,5 +1,11 @@
 /**
  * Analytics Page — BigQuery-Powered Insights
+ *
+ * Accessibility features:
+ * - Stat cards have role=figure + aria-label with actual values
+ * - Charts wrapped in figure with role=img + accessible data description
+ * - Section landmarks with aria-labels
+ * - h2 section headings under page h1
  */
 
 import React, { useState, useEffect } from 'react';
@@ -81,39 +87,53 @@ export default function Analytics() {
       </div>
 
       {/* Summary Stats */}
-      <div className="row g-3 mb-4 stagger-children">
-        {[
-          { icon: BarChart3, label: 'Total Tasks', value: stats?.total || 11, color: '#6366f1' },
-          { icon: TrendingUp, label: 'Completion Rate', value: `${stats ? Math.round((stats.done_count / Math.max(stats.total, 1)) * 100) : 45}%`, color: '#10b981' },
-          { icon: AlertTriangle, label: 'Overdue', value: stats?.overdue_count || 2, color: '#ef4444' },
-          { icon: Users, label: 'Active Members', value: 5, color: '#3b82f6' },
-        ].map((card, i) => (
-          <div key={i} className="col-6 col-lg-3">
-            <div className="stat-card">
-              <card.icon size={20} style={{ color: card.color }} className="mb-2" />
-              <div className="stat-value">{card.value}</div>
-              <div className="stat-label">{card.label}</div>
+      <section aria-label="Team analytics summary">
+        <div className="row g-3 mb-4 stagger-children">
+          {[
+            { icon: BarChart3, label: 'Total Tasks', value: stats?.total || 11, color: '#6366f1' },
+            { icon: TrendingUp, label: 'Completion Rate', value: `${stats ? Math.round((stats.done_count / Math.max(stats.total, 1)) * 100) : 45}%`, color: '#10b981' },
+            { icon: AlertTriangle, label: 'Overdue', value: stats?.overdue_count || 2, color: '#ef4444' },
+            { icon: Users, label: 'Active Members', value: 5, color: '#3b82f6' },
+          ].map((card, i) => (
+            <div key={i} className="col-6 col-lg-3">
+              <div
+                className="stat-card"
+                role="figure"
+                aria-label={`${card.label}: ${card.value}`}
+              >
+                <card.icon size={20} style={{ color: card.color }} className="mb-2" aria-hidden="true" />
+                <div className="stat-value" aria-hidden="true">{card.value}</div>
+                <div className="stat-label">{card.label}</div>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      </section>
 
       <div className="row g-3">
         <div className="col-lg-8">
-          <div className="glass-card p-4" style={{ height: 380 }}>
-            <h6 className="fw-bold mb-3">Weekly Task Flow</h6>
-            <div style={{ height: 310 }}>
+          <section className="glass-card p-4" style={{ height: 380 }} aria-label="Weekly task flow chart">
+            <h2 className="fw-bold mb-3" style={{ fontSize: '1rem' }}>Weekly Task Flow</h2>
+            <figure
+              style={{ height: 310, margin: 0 }}
+              role="img"
+              aria-label="Bar chart: Weekly tasks. Mon: 4 completed / 5 created. Tue: 6 / 3. Wed: 3 / 7. Thu: 8 / 4. Fri: 5 / 6."
+            >
               <Bar data={weeklyData} options={chartOptions} />
-            </div>
-          </div>
+            </figure>
+          </section>
         </div>
         <div className="col-lg-4">
-          <div className="glass-card p-4" style={{ height: 380 }}>
-            <h6 className="fw-bold mb-3">Task Distribution</h6>
-            <div style={{ height: 310 }}>
+          <section className="glass-card p-4" style={{ height: 380 }} aria-label="Task distribution chart">
+            <h2 className="fw-bold mb-3" style={{ fontSize: '1rem' }}>Task Distribution</h2>
+            <figure
+              style={{ height: 310, margin: 0 }}
+              role="img"
+              aria-label={`Doughnut chart: Task distribution. To Do: ${stats?.todo_count || 2}, In Progress: ${stats?.in_progress_count || 3}, Review: ${stats?.review_count || 1}, Done: ${stats?.done_count || 5}.`}
+            >
               <Doughnut data={completionData} options={donutOptions} />
-            </div>
-          </div>
+            </figure>
+          </section>
         </div>
       </div>
 

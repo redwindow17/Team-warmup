@@ -1,5 +1,12 @@
 /**
  * Workflows Page — Rule-Based Automation
+ *
+ * Accessibility features:
+ * - Workflow cards use article semantics with aria-label
+ * - Toggle buttons use aria-pressed + aria-label
+ * - Delete buttons have descriptive aria-label
+ * - Create modal uses role=dialog + aria-modal + aria-labelledby
+ * - Form inputs have proper htmlFor/id associations
  */
 import React, { useState, useEffect } from 'react';
 import { Workflow, Plus, Zap, Bell, ArrowRight, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
@@ -66,8 +73,13 @@ export default function Workflows() {
           <h1 className="h3 fw-bold mb-1">Workflows</h1>
           <p style={{ color: 'var(--text-secondary)' }}>Automate your team processes</p>
         </div>
-        <button className="btn btn-primary d-flex align-items-center gap-2" onClick={() => setShowForm(true)}>
-          <Plus size={18} /> New Workflow
+        <button
+          className="btn btn-primary d-flex align-items-center gap-2"
+          onClick={() => setShowForm(true)}
+          aria-haspopup="dialog"
+          aria-expanded={showForm}
+        >
+          <Plus size={18} aria-hidden="true" /> New Workflow
         </button>
       </div>
 
@@ -78,54 +90,101 @@ export default function Workflows() {
         <div className="row g-3 stagger-children">
           {workflows.map(wf => (
             <div key={wf.id} className="col-md-6 col-lg-4">
-              <div className="glass-card p-4">
+              <article
+                className="glass-card p-4"
+                aria-label={`Workflow: ${wf.name}, ${wf.enabled ? 'enabled' : 'disabled'}`}
+              >
                 <div className="d-flex justify-content-between mb-3">
-                  <h6 className="fw-bold mb-0">{wf.name}</h6>
-                  <button onClick={() => toggleWf(wf.id, wf.enabled)} className="btn btn-sm p-0"
-                    style={{ color: wf.enabled ? 'var(--success)' : 'var(--text-muted)' }}>
-                    {wf.enabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+                  <h2 className="fw-bold mb-0" style={{ fontSize: '0.9rem' }}>{wf.name}</h2>
+                  <button
+                    onClick={() => toggleWf(wf.id, wf.enabled)}
+                    className="btn btn-sm p-0"
+                    style={{ color: wf.enabled ? 'var(--success)' : 'var(--text-muted)' }}
+                    aria-pressed={wf.enabled}
+                    aria-label={`${wf.enabled ? 'Disable' : 'Enable'} workflow: ${wf.name}`}
+                  >
+                    {wf.enabled ? <ToggleRight size={28} aria-hidden="true" /> : <ToggleLeft size={28} aria-hidden="true" />}
                   </button>
                 </div>
                 <div className="d-flex align-items-center gap-2 mb-3">
                   <span className="badge" style={{ background: 'var(--info-bg)', color: 'var(--info)' }}>
-                    <Zap size={12} className="me-1" />{TRIGGERS.find(t => t.value === wf.trigger_type)?.label}
+                    <Zap size={12} className="me-1" aria-hidden="true" />
+                    {TRIGGERS.find(t => t.value === wf.trigger_type)?.label}
                   </span>
-                  <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} />
+                  <ArrowRight size={14} style={{ color: 'var(--text-muted)' }} aria-hidden="true" />
                   <span className="badge" style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}>
-                    <Bell size={12} className="me-1" />Notify
+                    <Bell size={12} className="me-1" aria-hidden="true" />Notify
                   </span>
                 </div>
                 <div className="d-flex justify-content-between">
-                  <small style={{ color: 'var(--text-muted)' }}>Runs: {wf.run_count || 0}</small>
-                  <button onClick={() => deleteWf(wf.id)} className="btn btn-sm" style={{ color: 'var(--danger)' }}><Trash2 size={16} /></button>
+                  <small style={{ color: 'var(--text-muted)' }} aria-label={`Runs: ${wf.run_count || 0}`}>
+                    Runs: {wf.run_count || 0}
+                  </small>
+                  <button
+                    onClick={() => deleteWf(wf.id)}
+                    className="btn btn-sm"
+                    style={{ color: 'var(--danger)' }}
+                    aria-label={`Delete workflow: ${wf.name}`}
+                  >
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
                 </div>
-              </div>
+              </article>
             </div>
           ))}
         </div>
       )}
 
       {showForm && (
-        <div className="modal d-block" style={{ background: 'rgba(0,0,0,0.5)' }} onClick={() => setShowForm(false)}>
-          <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
+        <div
+          className="modal d-block"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          role="presentation"
+          onClick={() => setShowForm(false)}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workflow-modal-title"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="modal-content">
-              <div className="modal-header"><h5 className="modal-title fw-bold">New Workflow</h5></div>
-              <form onSubmit={handleCreate}>
+              <div className="modal-header">
+                <h2 id="workflow-modal-title" className="modal-title fw-bold" style={{ fontSize: '1.1rem' }}>New Workflow</h2>
+                <button className="btn-close" onClick={() => setShowForm(false)} aria-label="Close new workflow dialog" />
+              </div>
+              <form onSubmit={handleCreate} aria-label="Create workflow form" noValidate>
                 <div className="modal-body">
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Name</label>
-                    <input className="form-control" value={form.name} onChange={e => setForm({...form, name: e.target.value})} required />
+                    <label htmlFor="wf-name" className="form-label small fw-semibold">Name</label>
+                    <input
+                      id="wf-name"
+                      name="name"
+                      className="form-control"
+                      value={form.name}
+                      onChange={e => setForm({...form, name: e.target.value})}
+                      required
+                      aria-required="true"
+                      autoComplete="off"
+                    />
                   </div>
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold">Trigger</label>
-                    <select className="form-select" value={form.triggerType} onChange={e => setForm({...form, triggerType: e.target.value})}>
+                    <label htmlFor="wf-trigger" className="form-label small fw-semibold">Trigger</label>
+                    <select
+                      id="wf-trigger"
+                      name="triggerType"
+                      className="form-select"
+                      value={form.triggerType}
+                      onChange={e => setForm({...form, triggerType: e.target.value})}
+                    >
                       {TRIGGERS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="modal-footer">
                   <button type="button" className="btn btn-outline-primary" onClick={() => setShowForm(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary">Create</button>
+                  <button type="submit" className="btn btn-primary">Create Workflow</button>
                 </div>
               </form>
             </div>
