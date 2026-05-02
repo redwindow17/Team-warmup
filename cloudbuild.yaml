@@ -1,0 +1,51 @@
+# ============================================
+# Google Cloud Build — CI/CD Pipeline
+# GCP Project: redwindow-482406
+# Builds Docker image and deploys to Cloud Run
+# ============================================
+steps:
+  # Build the Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/redwindow-482406/syncsphere:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/redwindow-482406/syncsphere:latest'
+      - '.'
+
+  # Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/redwindow-482406/syncsphere:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/redwindow-482406/syncsphere:latest'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'syncsphere'
+      - '--image=gcr.io/redwindow-482406/syncsphere:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--add-cloudsql-instances=redwindow-482406:us-central1:syncsphere-db'
+      - '--set-env-vars=NODE_ENV=production,FIREBASE_PROJECT_ID=redwindow-482406,VERTEX_AI_PROJECT=redwindow-482406,VERTEX_AI_LOCATION=us-central1,GCS_BUCKET_NAME=redwindow-482406-syncsphere-files,BQ_DATASET=syncsphere_analytics,DB_NAME=syncsphere,DB_USER=postgres,DB_PASSWORD=SyncSphere2026!,DB_SOCKET_PATH=/cloudsql/redwindow-482406:us-central1:syncsphere-db'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=10'
+
+images:
+  - 'gcr.io/redwindow-482406/syncsphere:$COMMIT_SHA'
+  - 'gcr.io/redwindow-482406/syncsphere:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

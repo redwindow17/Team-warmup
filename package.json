@@ -1,0 +1,21 @@
+{
+  "name": "syncsphere",
+  "version": "1.0.0",
+  "description": "AI-Powered Team Coordination Platform — Slack + Trello + Notion enhanced with Google Cloud intelligence",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "test": "cd backend && npm test",
+    "setup": "cd backend && npm install && cd ../frontend && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

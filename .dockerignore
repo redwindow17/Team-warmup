@@ -1,0 +1,11 @@
+node_modules
+.env
+.env.local
+*.log
+.git
+.gitignore
+frontend/node_modules
+frontend/dist
+backend/node_modules
+README.md
+.vscode
