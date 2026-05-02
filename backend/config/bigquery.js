@@ -8,7 +8,12 @@
 
 const { BigQuery } = require('@google-cloud/bigquery');
 
-const bigquery = new BigQuery();
+const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './serviceAccountKey.json';
+
+const bigquery = new BigQuery({
+  projectId: process.env.GOOGLE_PROJECT_ID || 'redwindow-482406',
+  keyFilename: require('fs').existsSync(keyPath) ? keyPath : undefined
+});
 const DATASET_ID = process.env.BQ_DATASET || 'syncsphere_analytics';
 
 /**

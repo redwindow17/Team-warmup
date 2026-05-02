@@ -8,7 +8,7 @@
 
 const { VertexAI } = require('@google-cloud/vertexai');
 
-const PROJECT_ID = process.env.VERTEX_AI_PROJECT || process.env.FIREBASE_PROJECT_ID;
+const PROJECT_ID = process.env.VERTEX_AI_PROJECT || process.env.FIREBASE_PROJECT_ID || 'redwindow-482406';
 const LOCATION = process.env.VERTEX_AI_LOCATION || 'us-central1';
 const MODEL_ID = 'gemini-1.5-pro';
 

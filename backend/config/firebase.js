@@ -7,12 +7,27 @@
 
 const admin = require('firebase-admin');
 
-// Initialize with Application Default Credentials (ADC)
-// In Cloud Run, ADC is automatic. Locally, set GOOGLE_APPLICATION_CREDENTIALS
+const fs = require('fs');
+const path = require('path');
+
+const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './serviceAccountKey.json';
+const absoluteKeyPath = path.resolve(keyPath);
+
 if (!admin.apps.length) {
+  let credentialConfig;
+  
+  // Explicitly use the GCP Key file if it exists
+  if (fs.existsSync(absoluteKeyPath)) {
+    console.log('[Firebase] Using explicit GCP Service Account Key:', absoluteKeyPath);
+    credentialConfig = admin.credential.cert(require(absoluteKeyPath));
+  } else {
+    console.log('[Firebase] Falling back to Application Default Credentials');
+    credentialConfig = admin.credential.applicationDefault();
+  }
+
   admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: process.env.FIREBASE_PROJECT_ID
+    credential: credentialConfig,
+    projectId: process.env.FIREBASE_PROJECT_ID || 'redwindow-482406'
   });
 }
 

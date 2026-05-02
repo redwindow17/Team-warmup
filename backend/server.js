@@ -14,6 +14,17 @@
  */
 
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
+
+// FORCE GCP KEY FOR ALL SERVICES:
+// If serviceAccountKey.json exists and env var isn't set, forcefully set it so all 
+// Google Cloud client libraries automatically use it for authentication.
+const defaultKeyPath = path.resolve(__dirname, 'serviceAccountKey.json');
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && fs.existsSync(defaultKeyPath)) {
+  process.env.GOOGLE_APPLICATION_CREDENTIALS = defaultKeyPath;
+  console.log('🔑 [Auth] Forced GOOGLE_APPLICATION_CREDENTIALS to:', defaultKeyPath);
+}
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');

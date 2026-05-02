@@ -7,8 +7,13 @@
 
 const { Storage } = require('@google-cloud/storage');
 
-const storage = new Storage();
-const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'syncsphere-files';
+const keyPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || './serviceAccountKey.json';
+
+const storage = new Storage({
+  projectId: process.env.GOOGLE_PROJECT_ID || 'redwindow-482406',
+  keyFilename: require('fs').existsSync(keyPath) ? keyPath : undefined
+});
+const BUCKET_NAME = process.env.GCS_BUCKET_NAME || 'redwindow-482406-syncsphere-files';
 const bucket = storage.bucket(BUCKET_NAME);
 
 /**

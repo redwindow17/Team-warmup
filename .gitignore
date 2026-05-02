@@ -112,3 +112,6 @@ coverage/
 *.tgz
 *.zip
 *.tar.gz
+backend/.env.example
+backend/.env.example
+frontend/.env.example
